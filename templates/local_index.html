@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Local Multi-Agent Chat (LM Studio / Ollama)</title>
+  <link rel="stylesheet" href="/static/local_styles.css">
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>Local Multi-Agent Chat</h1>
+      <div class="sub">LM Studio / Ollama のローカルAPIに同時問い合わせ</div>
+    </header>
+
+    <section class="agents">
+      <h2>Agents</h2>
+      <div id="agent-list"></div>
+      <button id="add-agent">＋ 追加</button>
+    </section>
+
+    <section class="chat">
+      <div id="messages" class="messages"></div>
+      <div class="input-row">
+        <textarea id="input" rows="3" placeholder="ここにメッセージを入力"></textarea>
+        <button id="send">送信</button>
+      </div>
+    </section>
+
+    <footer>
+      <span>起動前に LM Studio か Ollama を有効にしてください。</span>
+    </footer>
+  </div>
+  <script src="/static/local_app.js"></script>
+</body>
+</html>
