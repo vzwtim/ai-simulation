@@ -1,4 +1,8 @@
-import os, json, urllib.request, time, random
+import os
+import json
+import urllib.request
+import time
+import random
 from flask import Flask, request, jsonify, render_template
 from flask_socketio import SocketIO, emit
 import threading
@@ -12,7 +16,12 @@ OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.1")
 TEMPERATURE = float(os.getenv("TEMPERATURE", "0.7"))
 CONVERSATION_PACE_SECONDS = 7 # AIの応答間隔（秒）
 
-app = Flask(__name__, template_folder="templates", static_folder="static")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+app = Flask(
+    __name__,
+    template_folder=os.path.join(BASE_DIR, "templates"),
+    static_folder=os.path.join(BASE_DIR, "static"),
+)
 app.config['SECRET_KEY'] = 'secret!'
 socketio = SocketIO(app, async_mode='threading')
 
@@ -133,3 +142,6 @@ if __name__ == "__main__":
     port = int(os.getenv("PORT", "5000"))
     print(f"Starting server on http://localhost:{port}")
     socketio.run(app, host="0.0.0.0", port=port, debug=True, allow_unsafe_werkzeug=True)
+
+# Expose a WSGI-compatible application for platforms like Vercel
+application = socketio.WSGIApp(socketio, app)
