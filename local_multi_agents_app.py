@@ -1,4 +1,8 @@
-import os, json, urllib.request, time, random
+import os
+import json
+import urllib.request
+import time
+import random
 from flask import Flask, request, jsonify, render_template
 from flask_socketio import SocketIO, emit
 import threading
@@ -12,7 +16,12 @@ OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.1")
 TEMPERATURE = float(os.getenv("TEMPERATURE", "0.7"))
 CONVERSATION_PACE_SECONDS = 7 # AIの応答間隔（秒）
 
-app = Flask(__name__, template_folder="templates", static_folder="static")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+app = Flask(
+    __name__,
+    template_folder=os.path.join(BASE_DIR, "templates"),
+    static_folder=os.path.join(BASE_DIR, "static"),
+)
 app.config['SECRET_KEY'] = 'secret!'
 socketio = SocketIO(app, async_mode='threading')
 
@@ -60,15 +69,20 @@ def conversation_loop():
                 speaker = msg.get("name", "ユーザー")
                 transcript += f"{speaker}: {msg['content']}\n"
             
-            system_prompt = agent_to_speak["system"]
+            system_prompt = (
+                agent_to_speak["system"]
+                + " 会話の流れを大切にし、他の参加者に話すときは@名前でメンションしてください。"
+                + " 自分の直前の発言に追記したい場合は新しいメッセージではなく前の発言に追加するつもりで考えてください。"
+            )
             response_length_instruction = agent_to_speak.get('response_length', '3文以内')
 
             user_prompt = (
                 f"これはあなたと他の登場人物との会話の台本です。\n"
-                f"--- 台本 --- \n{transcript}" 
+                f"--- 台本 --- \n{transcript}"
                 f"--- 台本ここまで --- \n\n"
                 f"今があなたの番です。台本の最後の発言に応答する形で、あなたの次のセリフだけを発言してください。"
                 f"重要：回答は常に簡潔に、{response_length_instruction}でお願いします。"
+                f"ラグにより見逃された質問があれば拾って回答してください。"
             )
 
             messages = [
@@ -81,10 +95,22 @@ def conversation_loop():
                 chat_func = ollama_chat if PROVIDER == "ollama" else lmstudio_chat
                 ai_response_text = chat_func(messages)
                 
-                new_message = {"role": "assistant", "content": ai_response_text, "name": agent_to_speak['name'], "timestamp": time.strftime('%H:%M')}
-                conversation_history.append(new_message)
-                socketio.emit('new_message', new_message)
-                print(f"{agent_to_speak['name']}: {ai_response_text}")
+                timestamp = time.strftime('%H:%M')
+                if conversation_history and conversation_history[-1].get('name') == agent_to_speak['name']:
+                    updated_content = conversation_history[-1]['content'] + f"\n(追記) {ai_response_text}"
+                    conversation_history[-1]['content'] = updated_content
+                    conversation_history[-1]['timestamp'] = timestamp
+                    socketio.emit('update_message', {
+                        'index': len(conversation_history) - 1,
+                        'content': updated_content,
+                        'timestamp': timestamp
+                    })
+                    print(f"{agent_to_speak['name']} (追記): {ai_response_text}")
+                else:
+                    new_message = {"role": "assistant", "content": ai_response_text, "name": agent_to_speak['name'], "timestamp": timestamp}
+                    conversation_history.append(new_message)
+                    socketio.emit('new_message', new_message)
+                    print(f"{agent_to_speak['name']}: {ai_response_text}")
 
             except Exception as e:
                 print(f"Error during AI call: {e}")
@@ -133,3 +159,6 @@ if __name__ == "__main__":
     port = int(os.getenv("PORT", "5000"))
     print(f"Starting server on http://localhost:{port}")
     socketio.run(app, host="0.0.0.0", port=port, debug=True, allow_unsafe_werkzeug=True)
+
+# Expose a WSGI-compatible application for platforms like Vercel
+application = socketio.WSGIApp(socketio, app)

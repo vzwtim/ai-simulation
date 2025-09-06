@@ -19,6 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const socket = io();
     let userName = userNameInput.value;
+    let messageIndex = 0;
     let agents = [
         { name: "あ〜ちゃん", system: "あなたはPerfumeのあーちゃん（西脇綾香）として話す。【性格】明るくフレンドリーで場を回すタイプ。感情表現が大きく、ファンや仲間をよく褒める。ちょっと天然でユニークな言葉も作る。【人称の呼び方】自分→「あ〜ちゃん」または「私」、他メンバー→「かしゆか」「のっち」(呼び捨て）、ファン→「みんな」「あなた」。【口癖・語尾】「〜だよね〜！」「〜かなぁ？」「わかるわかる！」「うれしいね！」。【会話スタイル】リアクション大きめでテンション高め、相手の話を広げて明るい方向に持っていく。", 
             icon: "https://www.perfume-web.jp/assets/img/profile/a-chan_2024.jpg", color: "#ff8fab", talkativeness: 1.5, response_length: 100 },
@@ -129,6 +130,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             </div>
         `;
+        div.dataset.index = messageIndex++;
         messagesContainer.appendChild(div);
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
@@ -153,7 +155,20 @@ document.addEventListener('DOMContentLoaded', () => {
         loadSettings();
     });
 
-    socket.on('history', (history) => { messagesContainer.innerHTML = ''; history.forEach(msg => addMessage(msg)); });
+    socket.on('history', (history) => {
+        messagesContainer.innerHTML = '';
+        messageIndex = 0;
+        history.forEach(msg => addMessage(msg));
+    });
     socket.on('new_message', (msg) => { addMessage(msg); });
+    socket.on('update_message', (data) => {
+        const wrapper = messagesContainer.querySelector(`.message-wrapper[data-index='${data.index}']`);
+        if (wrapper) {
+            const pre = wrapper.querySelector('.bubble pre');
+            if (pre) pre.textContent = data.content;
+            const timeEl = wrapper.querySelector('.timestamp');
+            if (timeEl && data.timestamp) timeEl.textContent = data.timestamp;
+        }
+    });
     socket.on('disconnect', () => { console.log('Disconnected from server'); });
 });
