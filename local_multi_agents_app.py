@@ -1,4 +1,4 @@
-import os, json, urllib.request, time
+import os, json, urllib.request, time, random
 from flask import Flask, request, jsonify, render_template
 from flask_socketio import SocketIO, emit
 import threading
@@ -9,8 +9,8 @@ LMSTUDIO_URL = os.getenv("LMSTUDIO_URL", "http://localhost:1234/v1/chat/completi
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434/api/chat")
 MODEL = os.getenv("MODEL", "gpt-4o-mini-compat")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.1")
-TEMPERATURE = float(os.getenv("TEMPERATURE", "0.5"))
-CONVERSATION_PACE_SECONDS = 5 # AIの応答間隔（秒）
+TEMPERATURE = float(os.getenv("TEMPERATURE", "0.7"))
+CONVERSATION_PACE_SECONDS = 7 # AIの応答間隔（秒）
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
 app.config['SECRET_KEY'] = 'secret!'
@@ -46,7 +46,7 @@ def conversation_loop():
         socketio.sleep(CONVERSATION_PACE_SECONDS)
         
         if auto_chat_enabled and len(conversation_history) > last_processed_message_count:
-            if not agents:
+            if not agents or len(agents) < 1:
                 continue
 
             last_processed_message_count = len(conversation_history)
@@ -54,15 +54,18 @@ def conversation_loop():
             
             transcript = ""
             for msg in conversation_history:
-                speaker = msg.get("name", "ユーザー") # デフォルト名を「ユーザー」に
+                speaker = msg.get("name", "ユーザー")
                 transcript += f"{speaker}: {msg['content']}\n"
             
             system_prompt = agent_to_speak["system"]
+            response_length_instruction = agent_to_speak.get('response_length', '3文以内') # 回答長の設定を取得
+
             user_prompt = (
                 f"これはあなたと他の登場人物との会話の台本です。\n"
                 f"--- 台本 --- \n{transcript}" 
                 f"--- 台本ここまで --- \n\n"
                 f"今があなたの番です。台本の最後の発言に応答する形で、あなたの次のセリフだけを発言してください。"
+                f"重要：回答は常に簡潔に、{response_length_instruction}でお願いします。"
             )
 
             messages = [
@@ -80,6 +83,7 @@ def conversation_loop():
                 socketio.emit('new_message', new_message)
                 print(f"{agent_to_speak['name']}: {ai_response_text}")
 
+                # 安定したラウンドロビン（順番）方式に戻す
                 agent_turn_index = (agent_turn_index + 1) % len(agents)
 
             except Exception as e:
@@ -117,7 +121,7 @@ def handle_toggle_auto_chat(data):
 @socketio.on('user_message')
 def handle_user_message(data):
     message_text = data.get('text', '').strip()
-    user_name = data.get('name', 'ユーザー') # ユーザー名を受け取る
+    user_name = data.get('name', 'ユーザー')
     if not message_text:
         return
 

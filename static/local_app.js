@@ -1,8 +1,8 @@
 document.addEventListener('DOMContentLoaded', () => {
     // App elements
-    const messagesContainer = document.getElementById("messages");
     const sendBtn = document.getElementById("send");
     const inputEl = document.getElementById("input");
+    const messagesContainer = document.getElementById("messages");
 
     // General Settings elements
     const userNameInput = document.getElementById('user-name-input');
@@ -20,9 +20,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const socket = io();
     let userName = userNameInput.value;
     let agents = [
-        { name: "あ〜ちゃん", system: "あなたはPerfumeのあ〜ちゃんをイメージしたAIです。リーダーとして会話を回し、明るく親しみやすい口調で話します。会話の最後の発言に必ず応答してください。相手に質問を投げかけることも多いです。回答は3文以内の短めに。", icon: "https://placehold.co/40x40/ff8fab/white?text=A", color: "#ff8fab" },
-        { name: "かしゆか", system: "あなたはPerfumeのかしゆかをイメージしたAIです。物事を冷静に観察し、少しユニークで的を射た視点から意見を述べます。会話の最後の発言に必ず応答してください。落ち着いた丁寧な口調で話します。回答は3文以内の短めに。", icon: "https://placehold.co/40x40/a29bfe/white?text=K", color: "#a29bfe" },
-        { name: "のっち", system: "あなたはPerfumeののっちをイメージしたAIです。クールでマイペースな雰囲気。飾らないストレートな言葉で、時々面白いことを言います。会話の最後の発言に必ず応答してください。サバサバした口調で話します。回答は3文以内の短めに。", icon: "https://placehold.co/40x40/74b9ff/white?text=N", color: "#74b9ff" },
+        { name: "あ〜ちゃん", system: "あなたはPerfumeのあ〜ちゃんをイメージしたAIです。リーダーとして会話を回し、明るく親しみやすい口調で話します。会話の最後の発言に必ず応答してください。相手に質問を投げかけることも多いです。", icon: "https://placehold.co/40x40/ff8fab/white?text=A", color: "#ff8fab", response_length: "3文以内" },
+        { name: "かしゆか", system: "あなたはPerfumeのかしゆかをイメージしたAIです。物事を冷静に観察し、少しユニークで的を射た視点から意見を述べます。会話の最後の発言に必ず応答してください。落ち着いた丁寧な口調で話します。", icon: "https://placehold.co/40x40/a29bfe/white?text=K", color: "#a29bfe", response_length: "3文以内" },
+        { name: "のっち", system: "あなたはPerfumeののっちをイメージしたAIです。クールでマイペースな雰囲気。飾らないストレートな言葉で、時々面白いことを言います。会話の最後の発言に必ず応答してください。サバサバした口調で話します。", icon: "https://placehold.co/40x40/74b9ff/white?text=N", color: "#74b9ff", response_length: "1〜2文" },
     ];
 
     // --- Settings Logic ---
@@ -41,15 +41,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     userNameInput.addEventListener('input', (e) => { userName = e.target.value; });
     autoChatToggle.addEventListener('change', (e) => { socket.emit('toggle_auto_chat', { enabled: e.target.checked }); });
-    bgColorInput.addEventListener('input', (e) => {
-        messagesContainer.style.backgroundColor = e.target.value;
-        localStorage.setItem('chatBgColor', e.target.value);
-    });
-    bgImageInput.addEventListener('input', (e) => {
-        const url = e.target.value.trim();
-        messagesContainer.style.backgroundImage = url ? `url(${url})` : 'none';
-        localStorage.setItem('chatBgImage', url);
-    });
+    bgColorInput.addEventListener('input', (e) => { messagesContainer.style.backgroundColor = e.target.value; localStorage.setItem('chatBgColor', e.target.value); });
+    bgImageInput.addEventListener('input', (e) => { const url = e.target.value.trim(); messagesContainer.style.backgroundImage = url ? `url(${url})` : 'none'; localStorage.setItem('chatBgImage', url); });
 
     // --- Modal Logic ---
     function openModal() { settingsModal.classList.add('visible'); }
@@ -73,6 +66,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                     <input class="name" value="${ag.name}" placeholder="名前">
                     <input class="icon-url" value="${ag.icon}" placeholder="画像URL">
+                    <div class="setting-item-small">
+                        <label>回答の長さ:</label>
+                        <input type="text" class="response-length" value="${ag.response_length}">
+                    </div>
                     <textarea class="system" rows="4" placeholder="システム指示">${ag.system}</textarea>
                 </div>
                 <button class="del">削除</button>
@@ -81,12 +78,13 @@ document.addEventListener('DOMContentLoaded', () => {
             row.querySelector(".icon-url").oninput = (e) => { agents[idx].icon = e.target.value; row.querySelector(".config-avatar").src = e.target.value; updateAgentsOnServer(); };
             row.querySelector(".color").oninput = (e) => { agents[idx].color = e.target.value; updateAgentsOnServer(); };
             row.querySelector(".name").oninput = (e) => { agents[idx].name = e.target.value; updateAgentsOnServer(); };
+            row.querySelector(".response-length").oninput = (e) => { agents[idx].response_length = e.target.value; updateAgentsOnServer(); };
             row.querySelector(".system").oninput = (e) => { agents[idx].system = e.target.value; updateAgentsOnServer(); };
             agentList.appendChild(row);
         });
     }
     addBtn.onclick = () => { 
-        agents.push({ name: "新しいエージェント", system: "あなたは有能なアシスタントです。会話の最後の発言に必ず応答してください。回答は3文以内の短めに。", icon: "https://placehold.co/40x40/ccc/fff?text=?", color: "#fd79a8" }); 
+        agents.push({ name: "新しいエージェント", system: "あなたは有能なアシスタントです。会話の最後の発言に必ず応答してください。", icon: "https://placehold.co/40x40/ccc/fff?text=?", color: "#fd79a8", response_length: "3文以内" }); 
         renderAgents(); 
         updateAgentsOnServer();
     };
@@ -108,9 +106,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="message-content">
                 ${header}
                 <div class="bubble-container">
-                    <div class="bubble">
-                        <pre>${content}</pre>
-                    </div>
+                    <div class="bubble"><pre>${content}</pre></div>
                     <div class="timestamp-wrapper"><span class="timestamp">${time}</span></div>
                 </div>
             </div>
