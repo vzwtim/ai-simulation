@@ -1,63 +1,96 @@
-const agentList = document.getElementById("agent-list");
-const addBtn = document.getElementById("add-agent");
-const sendBtn = document.getElementById("send");
-const inputEl = document.getElementById("input");
-const msgBox = document.getElementById("messages");
+document.addEventListener('DOMContentLoaded', () => {
+    const agentList = document.getElementById("agent-list");
+    const addBtn = document.getElementById("add-agent");
+    const sendBtn = document.getElementById("send");
+    const inputEl = document.getElementById("input");
+    const msgBox = document.getElementById("messages");
 
-let agents = [
-  { name: "ロジック担当", system: "あなたは厳密な論理展開を好む助言者。前提を明示化し、手順で簡潔に答える。" },
-  { name: "創造担当", system: "あなたは発想の触媒。比喩と連想で3案を短く示す。" },
-  { name: "批評担当", system: "あなたは建設的な批評家。リスク・反例・落とし穴を3点で述べる。" },
-];
+    const socket = io();
 
-function renderAgents() {
-  agentList.innerHTML = "";
-  agents.forEach((ag, idx) => {
-    const row = document.createElement("div");
-    row.className = "agent-row";
-    row.innerHTML = `
-      <input class="name" value="${ag.name}" placeholder="名前">
-      <textarea class="system" rows="2" placeholder="システム指示">${ag.system}</textarea>
-      <button class="del">削除</button>
-    `;
-    row.querySelector(".del").onclick = () => { agents.splice(idx,1); renderAgents(); };
-    row.querySelector(".name").oninput = (e) => agents[idx].name = e.target.value;
-    row.querySelector(".system").oninput = (e) => agents[idx].system = e.target.value;
-    agentList.appendChild(row);
-  });
-}
-renderAgents();
+    let agents = [
+        { name: "あ〜ちゃん", system: "あなたはPerfumeのあ〜ちゃんをイメージしたAIです。リーダーとして会話を回し、明るく親しみやすい口調で話します。相手に質問を投げかけることも多いです。回答は3文以内の短めにしてください。" },
+        { name: "かしゆか", system: "あなたはPerfumeのかしゆかをイメージしたAIです。物事を冷静に観察し、少しユニークで的を射た視点から意見を述べます。落ち着いた丁寧な口調で話します。回答は3文以内の短めにしてください。" },
+        { name: "のっち", system: "あなたはPerfumeののっちをイメージしたAIです。クールでマイペースな雰囲気。飾らないストレートな言葉で、時々面白いことを言います。サバサバした口調で話します。回答は3文以内の短めにしてください。" },
+    ];
 
-function addMessage(role, text, agentName=null) {
-  const div = document.createElement("div");
-  div.className = `bubble ${role}`;
-  const who = agentName ? `<span class="agent">${agentName}</span>` : "";
-  div.innerHTML = `${who}<pre>${text}</pre>`;
-  msgBox.appendChild(div);
-  msgBox.scrollTop = msgBox.scrollHeight;
-}
+    function updateAgentsOnServer() {
+        socket.emit('update_agents', agents);
+    }
 
-addBtn.onclick = () => { agents.push({ name:"新しいエージェント", system:"あなたは有能なアシスタントです。" }); renderAgents(); };
+    function renderAgents() {
+        agentList.innerHTML = "";
+        agents.forEach((ag, idx) => {
+            const row = document.createElement("div");
+            row.className = "agent-row";
+            row.innerHTML = `
+                <input class="name" value="${ag.name}" placeholder="名前">
+                <textarea class="system" rows="3" placeholder="システム指示">${ag.system}</textarea>
+                <button class="del">削除</button>
+            `;
+            row.querySelector(".del").onclick = () => { 
+                agents.splice(idx, 1); 
+                renderAgents(); 
+                updateAgentsOnServer();
+            };
+            row.querySelector(".name").oninput = (e) => {
+                agents[idx].name = e.target.value;
+                updateAgentsOnServer();
+            };
+            row.querySelector(".system").oninput = (e) => {
+                agents[idx].system = e.target.value;
+                updateAgentsOnServer();
+            };
+            agentList.appendChild(row);
+        });
+    }
 
-sendBtn.onclick = async () => {
-  const text = inputEl.value.trim();
-  if (!text) return;
-  inputEl.value = "";
-  addMessage("user", text);
+    function addMessage(msg) {
+        const div = document.createElement("div");
+        // role: user, assistant, system
+        div.className = `bubble ${msg.role}`;
+        const agentName = msg.role === 'assistant' ? `<span class="agent">${msg.name}</span>` : "";
+        const content = msg.content.replace(/</g, "&lt;").replace(/>/g, "&gt;"); // Basic sanitization
+        div.innerHTML = `${agentName}<pre>${content}</pre>`;
+        msgBox.appendChild(div);
+        msgBox.scrollTop = msgBox.scrollHeight;
+    }
 
-  sendBtn.disabled = true;
-  try {
-    const res = await fetch("/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: text, agents })
+    addBtn.onclick = () => { 
+        agents.push({ name: "新しいエージェント", system: "あなたは有能なアシスタントです。回答は3文以内の短めにしてください。" }); 
+        renderAgents(); 
+        updateAgentsOnServer();
+    };
+
+    sendBtn.onclick = () => {
+        const text = inputEl.value.trim();
+        if (!text) return;
+        socket.emit('user_message', { text: text });
+        inputEl.value = "";
+    };
+    
+    inputEl.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendBtn.onclick();
+        }
     });
-    const data = await res.json();
-    if (data.error) { addMessage("system", "エラー: " + data.error); return; }
-    (data.replies || []).forEach(r => addMessage("agent", r.text, r.name));
-  } catch (e) {
-    addMessage("system", "通信エラー: " + e.message);
-  } finally {
-    sendBtn.disabled = false;
-  }
-};
+
+    socket.on('connect', () => {
+        console.log('Connected to server');
+        renderAgents();
+        updateAgentsOnServer();
+    });
+
+    socket.on('history', (history) => {
+        msgBox.innerHTML = '';
+        history.forEach(msg => addMessage(msg));
+    });
+
+    socket.on('new_message', (msg) => {
+        addMessage(msg);
+    });
+
+    socket.on('disconnect', () => {
+        console.log('Disconnected from server');
+    });
+});

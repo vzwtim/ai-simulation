@@ -3,18 +3,20 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Local Multi-Agent Chat (LM Studio / Ollama)</title>
+  <title>Local Multi-Agent Chat (WebSocket)</title>
   <link rel="stylesheet" href="/static/local_styles.css">
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 </head>
 <body>
   <div class="app">
     <header>
       <h1>Local Multi-Agent Chat</h1>
-      <div class="sub">LM Studio / Ollama のローカルAPIに同時問い合わせ</div>
+      <div class="sub">AIたちが自律的に会話し、そこに人間が割り込めるチャット</div>
     </header>
 
     <section class="agents">
       <h2>Agents</h2>
+      <div class="sub">（ここで定義したAIたちが自動で会話します。編集すると即座に反映されます）</div>
       <div id="agent-list"></div>
       <button id="add-agent">＋ 追加</button>
     </section>
@@ -22,7 +24,7 @@
     <section class="chat">
       <div id="messages" class="messages"></div>
       <div class="input-row">
-        <textarea id="input" rows="3" placeholder="ここにメッセージを入力"></textarea>
+        <textarea id="input" rows="2" placeholder="会話に割り込む..."></textarea>
         <button id="send">送信</button>
       </div>
     </section>
