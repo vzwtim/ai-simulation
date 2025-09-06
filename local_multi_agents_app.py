@@ -9,7 +9,7 @@ LMSTUDIO_URL = os.getenv("LMSTUDIO_URL", "http://localhost:1234/v1/chat/completi
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434/api/chat")
 MODEL = os.getenv("MODEL", "gpt-4o-mini-compat")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.1")
-TEMPERATURE = float(os.getenv("TEMPERATURE", "0.7"))
+TEMPERATURE = float(os.getenv("TEMPERATURE", "0.5"))
 CONVERSATION_PACE_SECONDS = 5 # AIの応答間隔（秒）
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
@@ -22,6 +22,7 @@ agents = []
 agent_turn_index = 0
 last_processed_message_count = 0
 background_task_started = False
+auto_chat_enabled = True # 自動会話のデフォルトはON
 
 # ===== LLM呼び出し関数 =====
 def lmstudio_chat(messages):
@@ -44,17 +45,16 @@ def conversation_loop():
     while True:
         socketio.sleep(CONVERSATION_PACE_SECONDS)
         
-        if len(conversation_history) > last_processed_message_count:
+        if auto_chat_enabled and len(conversation_history) > last_processed_message_count:
             if not agents:
                 continue
 
             last_processed_message_count = len(conversation_history)
             agent_to_speak = agents[agent_turn_index]
             
-            # --- 新しい「台本」形式のプロンプトを作成 ---
             transcript = ""
             for msg in conversation_history:
-                speaker = msg.get("name", "あなた") # 人間からの発言者を「あなた」とする
+                speaker = msg.get("name", "ユーザー") # デフォルト名を「ユーザー」に
                 transcript += f"{speaker}: {msg['content']}\n"
             
             system_prompt = agent_to_speak["system"]
@@ -69,14 +69,13 @@ def conversation_loop():
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
             ]
-            # --- プロンプト作成ここまで ---
 
             print(f"--- {agent_to_speak['name']} is thinking... ---")
             try:
                 chat_func = ollama_chat if PROVIDER == "ollama" else lmstudio_chat
                 ai_response_text = chat_func(messages)
                 
-                new_message = {"role": "assistant", "content": ai_response_text, "name": agent_to_speak['name']}
+                new_message = {"role": "assistant", "content": ai_response_text, "name": agent_to_speak['name'], "timestamp": time.strftime('%H:%M')}
                 conversation_history.append(new_message)
                 socketio.emit('new_message', new_message)
                 print(f"{agent_to_speak['name']}: {ai_response_text}")
@@ -108,17 +107,24 @@ def handle_update_agents(new_agents):
         socketio.start_background_task(target=conversation_loop)
         background_task_started = True
 
+@socketio.on('toggle_auto_chat')
+def handle_toggle_auto_chat(data):
+    global auto_chat_enabled
+    auto_chat_enabled = data.get('enabled', True)
+    status = "enabled" if auto_chat_enabled else "disabled"
+    print(f"Auto-chat {status}")
+
 @socketio.on('user_message')
 def handle_user_message(data):
-    global last_processed_message_count
     message_text = data.get('text', '').strip()
+    user_name = data.get('name', 'ユーザー') # ユーザー名を受け取る
     if not message_text:
         return
 
-    new_message = {"role": "user", "content": message_text}
+    new_message = {"role": "user", "content": message_text, "name": user_name, "timestamp": time.strftime('%H:%M')}
     conversation_history.append(new_message)
     emit('new_message', new_message, broadcast=True)
-    print(f"User: {message_text}")
+    print(f"{user_name}: {message_text}")
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", "5000"))

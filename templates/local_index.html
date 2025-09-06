@@ -3,36 +3,65 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Local Multi-Agent Chat (WebSocket)</title>
+  <title>Local Multi-Agent Chat</title>
+  <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
   <link rel="stylesheet" href="/static/local_styles.css">
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 </head>
 <body>
-  <div class="app">
-    <header>
-      <h1>Local Multi-Agent Chat</h1>
-      <div class="sub">AIたちが自律的に会話し、そこに人間が割り込めるチャット</div>
+  <div class="app-container">
+    <header class="app-header">
+      <h1>Multi-Agent Chat</h1>
+      <button id="settings-btn" class="icon-btn"><i class='bx bx-cog'></i></button>
     </header>
 
-    <section class="agents">
-      <h2>Agents</h2>
-      <div class="sub">（ここで定義したAIたちが自動で会話します。編集すると即座に反映されます）</div>
-      <div id="agent-list"></div>
-      <button id="add-agent">＋ 追加</button>
-    </section>
+    <main id="messages" class="messages-container"></main>
 
-    <section class="chat">
-      <div id="messages" class="messages"></div>
+    <footer class="input-footer">
       <div class="input-row">
-        <textarea id="input" rows="2" placeholder="会話に割り込む..."></textarea>
-        <button id="send">送信</button>
+        <textarea id="input" rows="1" placeholder="メッセージを入力..."></textarea>
+        <button id="send" class="icon-btn"><i class='bx bxs-paper-plane'></i></button>
       </div>
-    </section>
-
-    <footer>
-      <span>起動前に LM Studio か Ollama を有効にしてください。</span>
     </footer>
   </div>
+
+  <!-- Settings Modal -->
+  <div id="settings-modal" class="modal-overlay">
+    <div class="modal-content">
+      <header class="modal-header">
+        <h2>設定</h2>
+        <button id="close-modal-btn" class="close-btn">&times;</button>
+      </header>
+      <div class="modal-body">
+        <section class="settings-section">
+          <h3>一般設定</h3>
+          <div class="setting-item">
+            <label for="user-name-input">あなたの呼び名</label>
+            <input type="text" id="user-name-input" value="あなた">
+          </div>
+          <div class="setting-item">
+            <label for="auto-chat-toggle">AI同士の自動会話</label>
+            <input type="checkbox" id="auto-chat-toggle" checked>
+          </div>
+          <div class="setting-item">
+            <label for="bg-color-input">背景色</label>
+            <input type="color" id="bg-color-input" value="#e5ddd5">
+          </div>
+          <div class="setting-item">
+            <label for="bg-image-input">背景画像 URL</label>
+            <input type="url" id="bg-image-input" placeholder="https://...">
+          </div>
+        </section>
+        <hr class="divider">
+        <section class="settings-section">
+          <h3>Agents 設定</h3>
+          <div id="agent-list"></div>
+          <button id="add-agent">＋ エージェントを追加</button>
+        </section>
+      </div>
+    </div>
+  </div>
+
   <script src="/static/local_app.js"></script>
 </body>
 </html>
