@@ -19,7 +19,6 @@ socketio = SocketIO(app, async_mode='threading')
 # ===== 会話状態 =====
 conversation_history = []
 agents = []
-agent_turn_index = 0
 last_processed_message_count = 0
 background_task_started = False
 auto_chat_enabled = True # 自動会話のデフォルトはON
@@ -41,7 +40,7 @@ def ollama_chat(messages):
 
 # ===== 見守りループ関数 =====
 def conversation_loop():
-    global last_processed_message_count, agent_turn_index
+    global last_processed_message_count
     while True:
         socketio.sleep(CONVERSATION_PACE_SECONDS)
         
@@ -50,15 +49,19 @@ def conversation_loop():
                 continue
 
             last_processed_message_count = len(conversation_history)
-            agent_to_speak = agents[agent_turn_index]
             
+            # --- 発言率に応じた加重ランダム選択 ---
+            talkativeness_weights = [agent.get('talkativeness', 1.0) for agent in agents]
+            agent_to_speak = random.choices(agents, weights=talkativeness_weights, k=1)[0]
+            # -----------------------------------
+
             transcript = ""
             for msg in conversation_history:
                 speaker = msg.get("name", "ユーザー")
                 transcript += f"{speaker}: {msg['content']}\n"
             
             system_prompt = agent_to_speak["system"]
-            response_length_instruction = agent_to_speak.get('response_length', '3文以内') # 回答長の設定を取得
+            response_length_instruction = agent_to_speak.get('response_length', '3文以内')
 
             user_prompt = (
                 f"これはあなたと他の登場人物との会話の台本です。\n"
@@ -83,9 +86,6 @@ def conversation_loop():
                 socketio.emit('new_message', new_message)
                 print(f"{agent_to_speak['name']}: {ai_response_text}")
 
-                # 安定したラウンドロビン（順番）方式に戻す
-                agent_turn_index = (agent_turn_index + 1) % len(agents)
-
             except Exception as e:
                 print(f"Error during AI call: {e}")
                 last_processed_message_count -= 1
@@ -103,9 +103,8 @@ def handle_connect():
 
 @socketio.on('update_agents')
 def handle_update_agents(new_agents):
-    global agents, agent_turn_index, background_task_started
+    global agents, background_task_started
     agents = new_agents
-    agent_turn_index = 0
     print(f"Agents updated: {agents}")
     if agents and not background_task_started:
         socketio.start_background_task(target=conversation_loop)

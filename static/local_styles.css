@@ -66,16 +66,35 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helve
 .setting-item input[type="checkbox"] { width: 20px; height: 20px; }
 
 .agent-row { display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 20px; }
-.agent-config-grid { display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto auto; gap: 10px 12px; align-items: center; }
-.agent-icon-picker { display: flex; gap: 8px; grid-column: 1 / 2; grid-row: 1 / 2; }
-.agent-row input.name { grid-column: 2 / 3; grid-row: 1 / 2; }
-.agent-row input.icon-url { grid-column: 1 / 3; grid-row: 2 / 3; }
-.agent-row .setting-item-small { grid-column: 1 / 3; grid-row: 3 / 4; display: flex; align-items: center; gap: 8px; font-size: 13px; }
-.agent-row textarea.system { grid-column: 1 / 3; grid-row: 4 / 5; }
+.agent-config-grid { display: grid; grid-template-columns: auto 1fr; /* Two columns: auto-width for icon/label, 1fr for input/name */ gap: 10px 12px; align-items: center; }
+
+/* Element assignments using auto-placement */
+.agent-icon-picker { grid-column: 1 / 2; }
+.agent-row input.name { grid-column: 2 / 3; }
+
+.agent-row input.icon-url,
+.agent-row .talk-slider,
+.agent-row .setting-item-small,
+.agent-row textarea.system {
+    grid-column: 1 / -1; /* Span across all columns */
+}
 
 .agent-row input, .agent-row textarea { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; }
 .config-avatar { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 1px solid var(--border-color); }
 .agent-row input.color { width: 42px; height: 42px; padding: 2px; border: 1px solid var(--border-color); cursor: pointer; }
-.setting-item-small input { flex-grow: 1; }
+
+/* Styles for talkativeness slider */
+.talk-slider { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+.talk-slider label { white-space: nowrap; }
+.talk-slider input[type="range"] { flex-grow: 1; -webkit-appearance: none; appearance: none; height: 8px; background: #ddd; border-radius: 5px; outline: none; }
+.talk-slider input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 20px; height: 20px; background: var(--accent-color); border-radius: 50%; cursor: pointer; }
+.talk-slider input[type="range"]::-moz-range-thumb { width: 20px; height: 20px; background: var(--accent-color); border-radius: 50%; cursor: pointer; }
+
+/* Styles for response length slider */
+.setting-item-small { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.setting-item-small label { white-space: nowrap; }
+.setting-item-small input[type="range"] { flex-grow: 1; -webkit-appearance: none; appearance: none; height: 8px; background: #ddd; border-radius: 5px; outline: none; }
+.setting-item-small input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 20px; height: 20px; background: var(--accent-color); border-radius: 50%; cursor: pointer; }
+.setting-item-small input[type="range"]::-moz-range-thumb { width: 20px; height: 20px; background: var(--accent-color); border-radius: 50%; cursor: pointer; }
 
 #add-agent { width: 100%; padding: 12px; background: var(--accent-color); color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; margin-top: 10px; }

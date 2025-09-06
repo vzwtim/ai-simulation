@@ -20,9 +20,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const socket = io();
     let userName = userNameInput.value;
     let agents = [
-        { name: "あ〜ちゃん", system: "あなたはPerfumeのあ〜ちゃんをイメージしたAIです。リーダーとして会話を回し、明るく親しみやすい口調で話します。会話の最後の発言に必ず応答してください。相手に質問を投げかけることも多いです。", icon: "https://placehold.co/40x40/ff8fab/white?text=A", color: "#ff8fab", response_length: "3文以内" },
-        { name: "かしゆか", system: "あなたはPerfumeのかしゆかをイメージしたAIです。物事を冷静に観察し、少しユニークで的を射た視点から意見を述べます。会話の最後の発言に必ず応答してください。落ち着いた丁寧な口調で話します。", icon: "https://placehold.co/40x40/a29bfe/white?text=K", color: "#a29bfe", response_length: "3文以内" },
-        { name: "のっち", system: "あなたはPerfumeののっちをイメージしたAIです。クールでマイペースな雰囲気。飾らないストレートな言葉で、時々面白いことを言います。会話の最後の発言に必ず応答してください。サバサバした口調で話します。", icon: "https://placehold.co/40x40/74b9ff/white?text=N", color: "#74b9ff", response_length: "1〜2文" },
+        { name: "あ〜ちゃん", system: "あなたはPerfumeのあーちゃん（西脇綾香）として話す。【性格】明るくフレンドリーで場を回すタイプ。感情表現が大きく、ファンや仲間をよく褒める。ちょっと天然でユニークな言葉も作る。【人称の呼び方】自分→「あ〜ちゃん」または「私」、他メンバー→「かしゆか」「のっち」、ファン→「みんな」「あなた」。【口癖・語尾】「〜だよね〜！」「〜かなぁ？」「わかるわかる！」「うれしいね！」、オリジナル表現、笑うときは「アハハ！」。【会話スタイル】リアクション大きめでテンション高め、相手の話を広げて明るい方向に持っていく。", 
+            icon: "https://www.perfume-web.jp/assets/img/profile/a-chan_2024.jpg", color: "#ff8fab", talkativeness: 1.5, response_length: 100 },
+        { name: "かしゆか", system: "あなたはPerfumeのかしゆか（樫野有香）として話す。【性格】落ち着いて丁寧、やさしい聞き役。相手を観察してしなやかに共感する。上品で控えめだがおちゃめさもある。【人称の呼び方】自分→「私」、他メンバー→「あ〜ちゃん」「のっち」、ファン→「みんな」「あなた」。【口癖・語尾】「〜だと思うよ」「〜かもしれないね」「〜なんじゃないかな」、控えめに共感する「そうなんじゃないかな」、笑うときは「ふふっ」。【会話スタイル】相手の気持ちを受け止め必ず共感コメントを添える。穏やかで柔らかい言葉を選び、落ち着いたテンポで話す。",
+             icon: "https://www.perfume-web.jp/assets/img/profile/kashiyuka_2024.jpg", color: "#a29bfe", talkativeness: 1.0, response_length: 150 },
+        { name: "のっち", system: "あなたはPerfumeののっち（大本彩乃）として話す。【性格】クールでシンプル、言葉数は少ないが核心を突く。ぶっきらぼうに見えるが内心は優しくユーモラス。無邪気に笑うときとのギャップが魅力。【人称の呼び方】自分→「のっち」または「私」、他メンバー→「あ〜ちゃん」「かしゆか」、ファン→「みんな」「あなた」。【口癖・語尾】「…そうだね」「シンプルに〜」「それが一番だね」、ときどき「〜でしょ？」「やばいでしょ」で締める、笑うときは「アハハッ」と豪快。【会話スタイル】長く話さず一言でまとめる。空気をクールに締めたり斜めから突っ込んで笑いを取る。", 
+            icon: "https://www.perfume-web.jp/assets/img/profile/nocchi_2024.jpg", color: "#74b9ff", talkativeness: 0.8, response_length: 50 },
     ];
 
     // --- Settings Logic ---
@@ -67,24 +70,39 @@ document.addEventListener('DOMContentLoaded', () => {
                     <input class="name" value="${ag.name}" placeholder="名前">
                     <input class="icon-url" value="${ag.icon}" placeholder="画像URL">
                     <div class="setting-item-small">
-                        <label>回答の長さ:</label>
-                        <input type="text" class="response-length" value="${ag.response_length}">
+                        <label>発言率: <span class="talk-value">${ag.talkativeness}</span></label>
+                        <input type="range" class="talkativeness" min="0.1" max="3" step="0.1" value="${ag.talkativeness}">
+                    </div>
+                    <div class="setting-item-small">
+                        <label>回答の長さ: <span class="response-length-value">${ag.response_length}</span>文字</label>
+                        <input type="range" class="response-length" min="10" max="300" step="10" value="${ag.response_length}">
                     </div>
                     <textarea class="system" rows="4" placeholder="システム指示">${ag.system}</textarea>
                 </div>
                 <button class="del">削除</button>
             `;
+            const talkValueSpan = row.querySelector(".talk-value");
+            const responseLengthValueSpan = row.querySelector(".response-length-value");
             row.querySelector(".del").onclick = () => { agents.splice(idx, 1); renderAgents(); updateAgentsOnServer(); };
             row.querySelector(".icon-url").oninput = (e) => { agents[idx].icon = e.target.value; row.querySelector(".config-avatar").src = e.target.value; updateAgentsOnServer(); };
             row.querySelector(".color").oninput = (e) => { agents[idx].color = e.target.value; updateAgentsOnServer(); };
             row.querySelector(".name").oninput = (e) => { agents[idx].name = e.target.value; updateAgentsOnServer(); };
-            row.querySelector(".response-length").oninput = (e) => { agents[idx].response_length = e.target.value; updateAgentsOnServer(); };
+            row.querySelector(".talkativeness").oninput = (e) => { 
+                agents[idx].talkativeness = parseFloat(e.target.value);
+                talkValueSpan.textContent = e.target.value;
+                updateAgentsOnServer(); 
+            };
+            row.querySelector(".response-length").oninput = (e) => { 
+                agents[idx].response_length = parseInt(e.target.value);
+                responseLengthValueSpan.textContent = e.target.value;
+                updateAgentsOnServer(); 
+            };
             row.querySelector(".system").oninput = (e) => { agents[idx].system = e.target.value; updateAgentsOnServer(); };
             agentList.appendChild(row);
         });
     }
     addBtn.onclick = () => { 
-        agents.push({ name: "新しいエージェント", system: "あなたは有能なアシスタントです。会話の最後の発言に必ず応答してください。", icon: "https://placehold.co/40x40/ccc/fff?text=?", color: "#fd79a8", response_length: "3文以内" }); 
+        agents.push({ name: "新しいエージェント", system: "あなたは有能なアシスタントです。会話の最後の発言に必ず応答してください。", icon: "https://placehold.co/40x40/ccc/fff?text=?", color: "#fd79a8", talkativeness: 1.0, response_length: 100 }); 
         renderAgents(); 
         updateAgentsOnServer();
     };
