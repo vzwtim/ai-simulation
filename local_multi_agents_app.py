@@ -58,11 +58,20 @@ def conversation_loop():
                 continue
 
             last_processed_message_count = len(conversation_history)
-            
-            # --- 発言率に応じた加重ランダム選択 ---
-            talkativeness_weights = [agent.get('talkativeness', 1.0) for agent in agents]
-            agent_to_speak = random.choices(agents, weights=talkativeness_weights, k=1)[0]
-            # -----------------------------------
+
+            # 直前の発言者名を特定
+            last_speaker_name = conversation_history[-1].get('name') if conversation_history else None
+
+            # 直前の発言者と同じエージェントは除外（自分に返信しない）
+            eligible_agents = [a for a in agents if a.get('name') != last_speaker_name]
+            if not eligible_agents:
+                # 該当者がいない（エージェントが1人のみで直前もその人など）の場合はスキップ
+                continue
+
+            # --- 発言率に応じた加重ランダム選択（除外後） ---
+            talkativeness_weights = [a.get('talkativeness', 1.0) for a in eligible_agents]
+            agent_to_speak = random.choices(eligible_agents, weights=talkativeness_weights, k=1)[0]
+            # -------------------------------------------------
 
             transcript = ""
             for msg in conversation_history:
@@ -72,15 +81,17 @@ def conversation_loop():
             system_prompt = (
                 agent_to_speak["system"]
                 + " 会話の流れを大切にし、他の参加者に話すときは@名前でメンションしてください。"
-                + " 自分の直前の発言に追記したい場合は新しいメッセージではなく前の発言に追加するつもりで考えてください。"
+                + " 重要：自分自身の発言に返信する文章は書かないでください（自分宛の返信はしない）。"
             )
             response_length_instruction = agent_to_speak.get('response_length', '3文以内')
 
+            # 最後の発言者が自分だった場合の誤応答を防ぐ指示も明記
             user_prompt = (
                 f"これはあなたと他の登場人物との会話の台本です。\n"
                 f"--- 台本 --- \n{transcript}"
                 f"--- 台本ここまで --- \n\n"
-                f"今があなたの番です。台本の最後の発言に応答する形で、あなたの次のセリフだけを発言してください。"
+                f"今があなたの番です。台本の『あなた以外の』最新の発言に応答する形で、あなたの次のセリフだけを発言してください。"
+                f"もし台本の最後の発言があなた自身なら、その一つ前の他者の発言に応答してください。自分の発言に自分で返信しないでください。"
                 f"重要：回答は常に簡潔に、{response_length_instruction}でお願いします。"
                 f"ラグにより見逃された質問があれば拾って回答してください。"
             )
@@ -96,21 +107,11 @@ def conversation_loop():
                 ai_response_text = chat_func(messages)
                 
                 timestamp = time.strftime('%H:%M')
-                if conversation_history and conversation_history[-1].get('name') == agent_to_speak['name']:
-                    updated_content = conversation_history[-1]['content'] + f"\n(追記) {ai_response_text}"
-                    conversation_history[-1]['content'] = updated_content
-                    conversation_history[-1]['timestamp'] = timestamp
-                    socketio.emit('update_message', {
-                        'index': len(conversation_history) - 1,
-                        'content': updated_content,
-                        'timestamp': timestamp
-                    })
-                    print(f"{agent_to_speak['name']} (追記): {ai_response_text}")
-                else:
-                    new_message = {"role": "assistant", "content": ai_response_text, "name": agent_to_speak['name'], "timestamp": timestamp}
-                    conversation_history.append(new_message)
-                    socketio.emit('new_message', new_message)
-                    print(f"{agent_to_speak['name']}: {ai_response_text}")
+                # 必ず新しい吹き出しとして追加（自分の直前発言への追記はしない）
+                new_message = {"role": "assistant", "content": ai_response_text, "name": agent_to_speak['name'], "timestamp": timestamp}
+                conversation_history.append(new_message)
+                socketio.emit('new_message', new_message)
+                print(f"{agent_to_speak['name']}: {ai_response_text}")
 
             except Exception as e:
                 print(f"Error during AI call: {e}")
