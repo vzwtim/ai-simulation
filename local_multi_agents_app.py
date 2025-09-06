@@ -44,7 +44,6 @@ def conversation_loop():
     while True:
         socketio.sleep(CONVERSATION_PACE_SECONDS)
         
-        # 会話に新しい動きがあればAIが応答
         if len(conversation_history) > last_processed_message_count:
             if not agents:
                 continue
@@ -52,9 +51,27 @@ def conversation_loop():
             last_processed_message_count = len(conversation_history)
             agent_to_speak = agents[agent_turn_index]
             
-            messages = [{"role": "system", "content": agent_to_speak["system"]}] + conversation_history
-            print(f"--- {agent_to_speak['name']} is thinking... ---")
+            # --- 新しい「台本」形式のプロンプトを作成 ---
+            transcript = ""
+            for msg in conversation_history:
+                speaker = msg.get("name", "あなた") # 人間からの発言者を「あなた」とする
+                transcript += f"{speaker}: {msg['content']}\n"
+            
+            system_prompt = agent_to_speak["system"]
+            user_prompt = (
+                f"これはあなたと他の登場人物との会話の台本です。\n"
+                f"--- 台本 --- \n{transcript}" 
+                f"--- 台本ここまで --- \n\n"
+                f"今があなたの番です。台本の最後の発言に応答する形で、あなたの次のセリフだけを発言してください。"
+            )
 
+            messages = [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ]
+            # --- プロンプト作成ここまで ---
+
+            print(f"--- {agent_to_speak['name']} is thinking... ---")
             try:
                 chat_func = ollama_chat if PROVIDER == "ollama" else lmstudio_chat
                 ai_response_text = chat_func(messages)
@@ -64,12 +81,10 @@ def conversation_loop():
                 socketio.emit('new_message', new_message)
                 print(f"{agent_to_speak['name']}: {ai_response_text}")
 
-                # 次のAIのターンを準備
                 agent_turn_index = (agent_turn_index + 1) % len(agents)
 
             except Exception as e:
                 print(f"Error during AI call: {e}")
-                # エラーが起きても会話が続くように、処理済みメッセージ数を元に戻す
                 last_processed_message_count -= 1
                 socketio.emit('new_message', {"role": "system", "content": f"AI ({agent_to_speak['name']}) の応答生成中にエラーが発生しました: {e}"})
 
@@ -89,7 +104,6 @@ def handle_update_agents(new_agents):
     agents = new_agents
     agent_turn_index = 0
     print(f"Agents updated: {agents}")
-    # エージェントが設定されたらループを開始
     if agents and not background_task_started:
         socketio.start_background_task(target=conversation_loop)
         background_task_started = True
