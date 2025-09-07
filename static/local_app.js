@@ -19,6 +19,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const componentSelect = document.getElementById('component-select');
     const componentFileInput = document.getElementById('component-file');
     const uploadComponentBtn = document.getElementById('upload-component');
+    const componentNameInput = document.getElementById('component-name-input');
+    const saveComponentBtn = document.getElementById('save-component');
 
     // RESTモード（Vercel）: Socket.IOは使わない
     let userName = userNameInput.value;
@@ -170,6 +172,23 @@ document.addEventListener('DOMContentLoaded', () => {
             componentFileInput.value = '';
         } catch (e) {
             console.warn('upload_component failed', e);
+        }
+    };
+
+    saveComponentBtn.onclick = async () => {
+        const name = componentNameInput.value.trim();
+        if (!name) return;
+        try {
+            await fetch('/api/upload_component', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, agents })
+            });
+            const names = await loadComponentList();
+            componentSelect.value = name;
+            await loadComponent(name);
+        } catch (e) {
+            console.warn('save_component failed', e);
         }
     };
 
