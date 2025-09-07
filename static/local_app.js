@@ -128,7 +128,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const icon = !isUser ? `<div class="avatar"><img src="${agent?.icon || 'https://placehold.co/40x40/ccc/fff?text=?'}" alt="avatar"></div>` : '';
         const header = !isUser ? `<div class="message-header"><span class="agent" style="color: ${agent?.color || '#888'}">${msg.name}</span></div>` : '';
         const content = msg.content.replace(/</g, "&lt;").replace(/>/g, "&gt;");
-        const time = msg.timestamp || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const time = msg.timestamp || new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Tokyo' });
 
         div.innerHTML = `
             ${icon}
@@ -150,6 +150,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!text) return;
         inputEl.value = "";
         inputEl.style.height = 'auto';
+
+        const timestamp = new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Tokyo' });
+        addMessage({ role: 'user', content: text, name: userName, timestamp });
+
         try {
             const res = await fetch('/api/send_message', {
                 method: 'POST',
@@ -158,10 +162,10 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             const data = await res.json();
             if (data.ok) {
-                // サーバー側でユーザー発話も履歴に追加済みなので、履歴全体を再描画
-                messagesContainer.innerHTML = '';
-                messageIndex = 0;
-                (data.history || []).forEach(msg => addMessage(msg));
+                const delayMs = 600;
+                (data.generated || []).forEach((msg, idx) => {
+                    setTimeout(() => addMessage(msg), delayMs * (idx + 1));
+                });
             } else {
                 console.error('send_message error', data.error);
             }
