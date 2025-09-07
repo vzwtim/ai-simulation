@@ -1,8 +1,9 @@
 import os
 import json
 import urllib.request
-import time
 import random
+from datetime import datetime
+from zoneinfo import ZoneInfo
 from flask import Flask, request, jsonify, render_template
 import threading
 
@@ -109,7 +110,7 @@ def generate_one_ai_turn():
     response_length_instruction = agent_to_speak.get('response_length', '3文以内')
     system_prompt = (
         agent_to_speak["system"]
-        + " 会話の流れを大切にし、他の参加者に話すときは@名前でメンションしてください。"
+        + " 会話の流れを大切にしてください。"
         + " 重要：自分自身の発言に返信する文章は書かないでください（自分宛の返信はしない）。"
     )
     user_prompt = (
@@ -137,7 +138,7 @@ def generate_one_ai_turn():
             chat_func = lmstudio_chat
         ai_response_text = chat_func(messages)
 
-        timestamp = time.strftime('%H:%M')
+        timestamp = datetime.now(ZoneInfo('Asia/Tokyo')).strftime('%H:%M')
         new_message = {"role": "assistant", "content": ai_response_text, "name": agent_to_speak['name'], "timestamp": timestamp}
         conversation_history.append(new_message)
         print(f"{agent_to_speak['name']}: {ai_response_text}")
@@ -180,7 +181,8 @@ def send_message_http():
         if not message_text:
             return jsonify({"ok": False, "error": "empty text"}), 400
 
-        new_user_msg = {"role": "user", "content": message_text, "name": user_name, "timestamp": time.strftime('%H:%M')}
+        timestamp = datetime.now(ZoneInfo('Asia/Tokyo')).strftime('%H:%M')
+        new_user_msg = {"role": "user", "content": message_text, "name": user_name, "timestamp": timestamp}
         conversation_history.append(new_user_msg)
 
         generated = []
