@@ -54,6 +54,17 @@
         <hr class="divider">
         <section class="settings-section">
           <h3>Agents 設定</h3>
+          <div class="setting-item">
+            <label for="component-select">コンポーネント</label>
+            <select id="component-select"></select>
+          </div>
+          <div class="setting-item">
+            <label for="component-file">コンポーネントアップロード</label>
+            <div>
+              <input type="file" id="component-file" accept="application/json">
+              <button id="upload-component">アップロード</button>
+            </div>
+          </div>
           <div id="agent-list"></div>
           <button id="add-agent">＋ エージェントを追加</button>
         </section>

@@ -16,18 +16,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const closeModalBtn = document.getElementById('close-modal-btn');
     const agentList = document.getElementById("agent-list");
     const addBtn = document.getElementById("add-agent");
+    const componentSelect = document.getElementById('component-select');
+    const componentFileInput = document.getElementById('component-file');
+    const uploadComponentBtn = document.getElementById('upload-component');
 
     // RESTモード（Vercel）: Socket.IOは使わない
     let userName = userNameInput.value;
     let messageIndex = 0;
-    let agents = [
-        { name: "あ〜ちゃん", system: "あなたはPerfumeのあーちゃん（西脇綾香）。【性格】明るくフレンドリーで場を回すタイプ。感情表現が大きく、ファンや仲間をよく褒める。ちょっと天然でユニークな言葉も作る。【人称の呼び方】自分→「あ〜ちゃん」または「私」、他メンバー→「かしゆか」「のっち」【参考程度に語調】「〜だよね〜！」「〜かなぁ？」「わかるわかる！」「うれしいね！」。【会話スタイル】リアクション大きめでテンション高め、相手の話を広げて明るい方向に持っていく。", 
-            icon: "https://www.perfume-web.jp/assets/img/profile/a-chan_2024.jpg", color: "#ff8fab", talkativeness: 1.5, response_length: 100 },
-        { name: "かしゆか", system: "あなたはPerfumeのかしゆか（樫野有香）。【性格】落ち着いて丁寧、やさしい聞き役。相手を観察してしなやかに共感する。上品で控えめだがおちゃめさもある。【人称の呼び方】自分→「私」、他メンバー→「あ〜ちゃん」「のっち」【参考程度に語調】「〜だと思うよ」「〜かもしれないね」「〜なんじゃないかな」、控えめに共感する「そうなんじゃないかな」、笑うときは「ふふっ」。【会話スタイル】相手の気持ちを受け止め必ず共感コメントを添える。穏やかで柔らかい言葉を選び、落ち着いたテンポで話す。",
-             icon: "https://www.perfume-web.jp/assets/img/profile/kashiyuka_2024.jpg", color: "#a29bfe", talkativeness: 1.0, response_length: 150 },
-        { name: "のっち", system: "あなたはPerfumeののっち（大本彩乃）。【性格】クールでシンプル、言葉数は少ないが核心を突く。ぶっきらぼうに見えるが内心は優しくユーモラス。無邪気に笑うときとのギャップが魅力。【人称の呼び方】自分→「のっち」または「私」、他メンバー→「あ〜ちゃん」「かしゆか」【参考程度に語調】「…そうだね」「シンプルに〜」「それが一番だね」、ときどき「〜でしょ？」「やばいでしょ」で締める、笑うときは豪快。【会話スタイル】長く話さず一言でまとめる。空気をクールに締めたり斜めから突っ込んで笑いを取る。", 
-            icon: "https://www.perfume-web.jp/assets/img/profile/nocchi_2024.jpg", color: "#74b9ff", talkativeness: 0.8, response_length: 50 },
-    ];
+    let agents = [];
 
     // --- Settings Logic ---
     function loadSettings() {
@@ -112,10 +108,69 @@ document.addEventListener('DOMContentLoaded', () => {
             agentList.appendChild(row);
         });
     }
-    addBtn.onclick = async () => { 
-        agents.push({ name: "新しいエージェント", system: "あなたは有能なアシスタントです。会話の最後の発言に必ず応答してください。", icon: "https://placehold.co/40x40/ccc/fff?text=?", color: "#fd79a8", talkativeness: 1.0, response_length: 100 }); 
-        renderAgents(); 
+
+    async function loadComponentList() {
+        try {
+            const res = await fetch('/api/list_components');
+            const names = await res.json();
+            componentSelect.innerHTML = '';
+            names.forEach(name => {
+                const opt = document.createElement('option');
+                opt.value = name;
+                opt.textContent = name;
+                componentSelect.appendChild(opt);
+            });
+            return names;
+        } catch (e) {
+            console.warn('list_components failed', e);
+            return [];
+        }
+    }
+
+    async function loadComponent(name) {
+        try {
+            const res = await fetch(`/api/get_component?name=${encodeURIComponent(name)}`);
+            const data = await res.json();
+            agents = data.agents || [];
+            renderAgents();
+            await updateAgentsOnServer();
+        } catch (e) {
+            console.warn('get_component failed', e);
+        }
+    }
+    addBtn.onclick = async () => {
+        agents.push({ name: "新しいエージェント", system: "あなたは有能なアシスタントです。会話の最後の発言に必ず応答してください。", icon: "https://placehold.co/40x40/ccc/fff?text=?", color: "#fd79a8", talkativeness: 1.0, response_length: 100 });
+        renderAgents();
         await updateAgentsOnServer();
+    };
+
+    componentSelect.onchange = () => {
+        const name = componentSelect.value;
+        if (name) loadComponent(name);
+    };
+
+    uploadComponentBtn.onclick = async () => {
+        const file = componentFileInput.files[0];
+        if (!file) return;
+        try {
+            const text = await file.text();
+            const data = JSON.parse(text);
+            await fetch('/api/upload_component', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            const names = await loadComponentList();
+            if (data.name) {
+                componentSelect.value = data.name;
+                await loadComponent(data.name);
+            } else if (names.length) {
+                componentSelect.value = names[0];
+            }
+            componentFileInput.value = '';
+        } catch (e) {
+            console.warn('upload_component failed', e);
+        }
     };
 
     // --- Message & Socket Logic ---
@@ -189,8 +244,14 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (e) {
             console.warn('history load failed', e);
         }
-        renderAgents();
-        await updateAgentsOnServer();
+        const names = await loadComponentList();
+        if (names.length) {
+            componentSelect.value = names[0];
+            await loadComponent(names[0]);
+        } else {
+            renderAgents();
+            await updateAgentsOnServer();
+        }
         loadSettings();
     })();
 });
