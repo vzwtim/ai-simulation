@@ -17,15 +17,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const agentList = document.getElementById("agent-list");
     const addBtn = document.getElementById("add-agent");
 
-    const socket = io();
+    // RESTモード（Vercel）: Socket.IOは使わない
     let userName = userNameInput.value;
     let messageIndex = 0;
     let agents = [
-        { name: "あ〜ちゃん", system: "あなたはPerfumeのあーちゃん（西脇綾香）として話す。【性格】明るくフレンドリーで場を回すタイプ。感情表現が大きく、ファンや仲間をよく褒める。ちょっと天然でユニークな言葉も作る。【人称の呼び方】自分→「あ〜ちゃん」または「私」、他メンバー→「かしゆか」「のっち」【参考程度に語調】「〜だよね〜！」「〜かなぁ？」「わかるわかる！」「うれしいね！」。【会話スタイル】リアクション大きめでテンション高め、相手の話を広げて明るい方向に持っていく。", 
+        { name: "あ〜ちゃん", system: "あなたはPerfumeのあーちゃん（西脇綾香）。【性格】明るくフレンドリーで場を回すタイプ。感情表現が大きく、ファンや仲間をよく褒める。ちょっと天然でユニークな言葉も作る。【人称の呼び方】自分→「あ〜ちゃん」または「私」、他メンバー→「かしゆか」「のっち」【参考程度に語調】「〜だよね〜！」「〜かなぁ？」「わかるわかる！」「うれしいね！」。【会話スタイル】リアクション大きめでテンション高め、相手の話を広げて明るい方向に持っていく。", 
             icon: "https://www.perfume-web.jp/assets/img/profile/a-chan_2024.jpg", color: "#ff8fab", talkativeness: 1.5, response_length: 100 },
-        { name: "かしゆか", system: "あなたはPerfumeのかしゆか（樫野有香）として話す。【性格】落ち着いて丁寧、やさしい聞き役。相手を観察してしなやかに共感する。上品で控えめだがおちゃめさもある。【人称の呼び方】自分→「私」、他メンバー→「あ〜ちゃん」「のっち」【参考程度に語調】「〜だと思うよ」「〜かもしれないね」「〜なんじゃないかな」、控えめに共感する「そうなんじゃないかな」、笑うときは「ふふっ」。【会話スタイル】相手の気持ちを受け止め必ず共感コメントを添える。穏やかで柔らかい言葉を選び、落ち着いたテンポで話す。",
+        { name: "かしゆか", system: "あなたはPerfumeのかしゆか（樫野有香）。【性格】落ち着いて丁寧、やさしい聞き役。相手を観察してしなやかに共感する。上品で控えめだがおちゃめさもある。【人称の呼び方】自分→「私」、他メンバー→「あ〜ちゃん」「のっち」【参考程度に語調】「〜だと思うよ」「〜かもしれないね」「〜なんじゃないかな」、控えめに共感する「そうなんじゃないかな」、笑うときは「ふふっ」。【会話スタイル】相手の気持ちを受け止め必ず共感コメントを添える。穏やかで柔らかい言葉を選び、落ち着いたテンポで話す。",
              icon: "https://www.perfume-web.jp/assets/img/profile/kashiyuka_2024.jpg", color: "#a29bfe", talkativeness: 1.0, response_length: 150 },
-        { name: "のっち", system: "あなたはPerfumeののっち（大本彩乃）として話す。【性格】クールでシンプル、言葉数は少ないが核心を突く。ぶっきらぼうに見えるが内心は優しくユーモラス。無邪気に笑うときとのギャップが魅力。【人称の呼び方】自分→「のっち」または「私」、他メンバー→「あ〜ちゃん」「かしゆか」【参考程度に語調】「…そうだね」「シンプルに〜」「それが一番だね」、ときどき「〜でしょ？」「やばいでしょ」で締める、笑うときは豪快。【会話スタイル】長く話さず一言でまとめる。空気をクールに締めたり斜めから突っ込んで笑いを取る。", 
+        { name: "のっち", system: "あなたはPerfumeののっち（大本彩乃）。【性格】クールでシンプル、言葉数は少ないが核心を突く。ぶっきらぼうに見えるが内心は優しくユーモラス。無邪気に笑うときとのギャップが魅力。【人称の呼び方】自分→「のっち」または「私」、他メンバー→「あ〜ちゃん」「かしゆか」【参考程度に語調】「…そうだね」「シンプルに〜」「それが一番だね」、ときどき「〜でしょ？」「やばいでしょ」で締める、笑うときは豪快。【会話スタイル】長く話さず一言でまとめる。空気をクールに締めたり斜めから突っ込んで笑いを取る。", 
             icon: "https://www.perfume-web.jp/assets/img/profile/nocchi_2024.jpg", color: "#74b9ff", talkativeness: 0.8, response_length: 50 },
     ];
 
@@ -44,7 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     userNameInput.addEventListener('input', (e) => { userName = e.target.value; });
-    autoChatToggle.addEventListener('change', (e) => { socket.emit('toggle_auto_chat', { enabled: e.target.checked }); });
+    autoChatToggle.addEventListener('change', (e) => { /* no-op on Vercel */ });
     bgColorInput.addEventListener('input', (e) => { messagesContainer.style.backgroundColor = e.target.value; localStorage.setItem('chatBgColor', e.target.value); });
     bgImageInput.addEventListener('input', (e) => { const url = e.target.value.trim(); messagesContainer.style.backgroundImage = url ? `url(${url})` : 'none'; localStorage.setItem('chatBgImage', url); });
 
@@ -56,7 +56,17 @@ document.addEventListener('DOMContentLoaded', () => {
     settingsModal.addEventListener('click', (e) => { if (e.target === settingsModal) closeModal(); });
 
     // --- Agent Management ---
-    function updateAgentsOnServer() { socket.emit('update_agents', agents); }
+    async function updateAgentsOnServer() {
+        try {
+            await fetch('/api/update_agents', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(agents)
+            });
+        } catch (e) {
+            console.warn('update_agents failed', e);
+        }
+    }
     function renderAgents() {
         agentList.innerHTML = "";
         agents.forEach((ag, idx) => {
@@ -102,10 +112,10 @@ document.addEventListener('DOMContentLoaded', () => {
             agentList.appendChild(row);
         });
     }
-    addBtn.onclick = () => { 
+    addBtn.onclick = async () => { 
         agents.push({ name: "新しいエージェント", system: "あなたは有能なアシスタントです。会話の最後の発言に必ず応答してください。", icon: "https://placehold.co/40x40/ccc/fff?text=?", color: "#fd79a8", talkativeness: 1.0, response_length: 100 }); 
         renderAgents(); 
-        updateAgentsOnServer();
+        await updateAgentsOnServer();
     };
 
     // --- Message & Socket Logic ---
@@ -135,40 +145,48 @@ document.addEventListener('DOMContentLoaded', () => {
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
 
-    function sendMessage() {
+    async function sendMessage() {
         const text = inputEl.value.trim();
         if (!text) return;
-        socket.emit('user_message', { text: text, name: userName });
         inputEl.value = "";
         inputEl.style.height = 'auto';
+        try {
+            const res = await fetch('/api/send_message', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text, name: userName, turns: 5 })
+            });
+            const data = await res.json();
+            if (data.ok) {
+                // サーバー側でユーザー発話も履歴に追加済みなので、履歴全体を再描画
+                messagesContainer.innerHTML = '';
+                messageIndex = 0;
+                (data.history || []).forEach(msg => addMessage(msg));
+            } else {
+                console.error('send_message error', data.error);
+            }
+        } catch (e) {
+            console.error('send_message failed', e);
+        }
     }
 
     sendBtn.onclick = sendMessage;
     inputEl.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
     inputEl.addEventListener('input', () => { inputEl.style.height = 'auto'; inputEl.style.height = (inputEl.scrollHeight) + 'px'; });
 
-    // --- Socket Listeners ---
-    socket.on('connect', () => {
-        console.log('Connected to server');
-        renderAgents();
-        updateAgentsOnServer();
-        loadSettings();
-    });
-
-    socket.on('history', (history) => {
-        messagesContainer.innerHTML = '';
-        messageIndex = 0;
-        history.forEach(msg => addMessage(msg));
-    });
-    socket.on('new_message', (msg) => { addMessage(msg); });
-    socket.on('update_message', (data) => {
-        const wrapper = messagesContainer.querySelector(`.message-wrapper[data-index='${data.index}']`);
-        if (wrapper) {
-            const pre = wrapper.querySelector('.bubble pre');
-            if (pre) pre.textContent = data.content;
-            const timeEl = wrapper.querySelector('.timestamp');
-            if (timeEl && data.timestamp) timeEl.textContent = data.timestamp;
+    // --- 初期ロード（履歴とエージェント設定送信） ---
+    (async function init() {
+        try {
+            const historyRes = await fetch('/api/history');
+            const history = await historyRes.json();
+            messagesContainer.innerHTML = '';
+            messageIndex = 0;
+            (history || []).forEach(msg => addMessage(msg));
+        } catch (e) {
+            console.warn('history load failed', e);
         }
-    });
-    socket.on('disconnect', () => { console.log('Disconnected from server'); });
+        renderAgents();
+        await updateAgentsOnServer();
+        loadSettings();
+    })();
 });
