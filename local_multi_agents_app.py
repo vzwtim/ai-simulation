@@ -56,7 +56,9 @@ def _load_default_agents():
             try:
                 with open(path, "r", encoding="utf-8") as f:
                     data = json.load(f)
-                return data.get("agents", [])
+                agents_list = data.get("agents") or []
+                if agents_list:
+                    return agents_list
             except Exception:
                 continue
     return []
@@ -200,13 +202,25 @@ def get_history():
 
 @app.get("/api/list_components")
 def list_components():
-    names = set()
+    components = {}
     for directory in (READONLY_COMPONENTS_DIR, COMPONENTS_DIR):
         if os.path.isdir(directory):
             for f in os.listdir(directory):
-                if f.endswith(".json"):
-                    names.add(os.path.splitext(f)[0])
-    return jsonify(sorted(names))
+                if not f.endswith(".json"):
+                    continue
+                path = os.path.join(directory, f)
+                try:
+                    with open(path, "r", encoding="utf-8") as file:
+                        data = json.load(file)
+                    name = data.get("name", os.path.splitext(f)[0])
+                    components[name] = {
+                        "name": name,
+                        "author": data.get("author", ""),
+                        "uploaded_at": data.get("uploaded_at", ""),
+                    }
+                except Exception:
+                    continue
+    return jsonify(sorted(components.values(), key=lambda x: x["name"]))
 
 @app.get("/api/get_component")
 def get_component():
@@ -227,6 +241,7 @@ def upload_component():
     try:
         data = request.get_json(force=True) or {}
         name = (data.get("name") or "").strip()
+        author = (data.get("author") or "").strip()
         agents_data = data.get("agents")
         if not name or not isinstance(agents_data, list):
             return jsonify({"ok": False, "error": "invalid data"}), 400
@@ -234,9 +249,32 @@ def upload_component():
         if not safe_name:
             return jsonify({"ok": False, "error": "invalid name"}), 400
         path = os.path.join(COMPONENTS_DIR, f"{safe_name}.json")
+        payload = {
+            "name": safe_name,
+            "author": author,
+            "uploaded_at": datetime.now(ZoneInfo('Asia/Tokyo')).isoformat(),
+            "agents": agents_data,
+        }
         with open(path, "w", encoding="utf-8") as f:
-            json.dump({"name": safe_name, "agents": agents_data}, f, ensure_ascii=False, indent=2)
+            json.dump(payload, f, ensure_ascii=False, indent=2)
         return jsonify({"ok": True, "name": safe_name})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.post("/api/delete_component")
+def delete_component():
+    try:
+        data = request.get_json(force=True) or {}
+        name = (data.get("name") or "").strip()
+        safe_name = "".join(c for c in name if c.isalnum() or c in ("-", "_")).strip()
+        if not safe_name:
+            return jsonify({"ok": False, "error": "invalid name"}), 400
+        path = os.path.join(COMPONENTS_DIR, f"{safe_name}.json")
+        if os.path.exists(path):
+            os.remove(path)
+            return jsonify({"ok": True})
+        return jsonify({"ok": False, "error": "not found"}), 404
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
 

@@ -112,15 +112,15 @@ document.addEventListener('DOMContentLoaded', () => {
     async function loadComponentList() {
         try {
             const res = await fetch('/api/list_components');
-            const names = await res.json();
+            const comps = await res.json();
             componentSelect.innerHTML = '';
-            names.forEach(name => {
+            comps.forEach(comp => {
                 const opt = document.createElement('option');
-                opt.value = name;
-                opt.textContent = name;
+                opt.value = comp.name;
+                opt.textContent = comp.name;
                 componentSelect.appendChild(opt);
             });
-            return names;
+            return comps.map(c => c.name);
         } catch (e) {
             console.warn('list_components failed', e);
             return [];
