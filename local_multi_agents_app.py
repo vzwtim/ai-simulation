@@ -7,7 +7,7 @@ from flask import Flask, request, jsonify, render_template
 import threading
 
 # ===== 設定 =====
-PROVIDER = os.getenv("PROVIDER", "lmstudio")
+PROVIDER = os.getenv("PROVIDER", "gemini")
 LMSTUDIO_URL = os.getenv("LMSTUDIO_URL", "http://localhost:1234/v1/chat/completions")
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434/api/chat")
 MODEL = os.getenv("MODEL", "gpt-4o-mini-compat")
@@ -189,6 +189,8 @@ def send_message_http():
             if not ok:
                 break
             generated.append(conversation_history[-1])
+        if not generated:
+            return jsonify({"ok": False, "error": "AI backend unavailable"}), 500
 
         return jsonify({"ok": True, "generated": generated, "history": conversation_history})
     except Exception as e:
