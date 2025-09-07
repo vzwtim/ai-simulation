@@ -19,8 +19,26 @@ TEMPERATURE = float(os.getenv("TEMPERATURE", "0.7"))
 CONVERSATION_PACE_SECONDS = 7 # AIの応答間隔（秒）
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-COMPONENTS_DIR = os.path.join(BASE_DIR, "components")
-os.makedirs(COMPONENTS_DIR, exist_ok=True)
+READONLY_COMPONENTS_DIR = os.path.join(BASE_DIR, "components")
+
+# Components directory can be overridden with COMPONENTS_DIR env var.
+# Fallback to /tmp/components if the chosen location is not writable.
+def _init_components_dir():
+    base_path = os.getenv("COMPONENTS_DIR") or READONLY_COMPONENTS_DIR
+    try:
+        os.makedirs(base_path, exist_ok=True)
+        test_path = os.path.join(base_path, ".write_test")
+        with open(test_path, "w"):
+            pass
+        os.remove(test_path)
+        return base_path
+    except OSError:
+        fallback = os.path.join("/tmp", "components")
+        os.makedirs(fallback, exist_ok=True)
+        return fallback
+
+COMPONENTS_DIR = _init_components_dir()
+
 app = Flask(
     __name__,
     template_folder=os.path.join(BASE_DIR, "templates"),
@@ -32,14 +50,15 @@ app.config['SECRET_KEY'] = 'secret!'
 conversation_history = []
 # コンポーネントのデフォルトを読み込む（perfume.jsonがあれば）
 def _load_default_agents():
-    path = os.path.join(COMPONENTS_DIR, "perfume.json")
-    if os.path.exists(path):
-        try:
-            with open(path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-            return data.get("agents", [])
-        except Exception:
-            pass
+    for directory in (COMPONENTS_DIR, READONLY_COMPONENTS_DIR):
+        path = os.path.join(directory, "perfume.json")
+        if os.path.exists(path):
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                return data.get("agents", [])
+            except Exception:
+                continue
     return []
 
 agents = _load_default_agents()
@@ -181,20 +200,27 @@ def get_history():
 
 @app.get("/api/list_components")
 def list_components():
-    files = [f for f in os.listdir(COMPONENTS_DIR) if f.endswith(".json")]
-    names = [os.path.splitext(f)[0] for f in files]
-    return jsonify(names)
+    names = set()
+    for directory in (READONLY_COMPONENTS_DIR, COMPONENTS_DIR):
+        if os.path.isdir(directory):
+            for f in os.listdir(directory):
+                if f.endswith(".json"):
+                    names.add(os.path.splitext(f)[0])
+    return jsonify(sorted(names))
 
 @app.get("/api/get_component")
 def get_component():
     name = request.args.get("name", "")
-    path = os.path.join(COMPONENTS_DIR, f"{name}.json")
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        return jsonify(data)
-    except Exception as e:
-        return jsonify({"error": str(e)}), 404
+    for directory in (COMPONENTS_DIR, READONLY_COMPONENTS_DIR):
+        path = os.path.join(directory, f"{name}.json")
+        if os.path.exists(path):
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                return jsonify(data)
+            except Exception as e:
+                return jsonify({"error": str(e)}), 500
+    return jsonify({"error": "not found"}), 404
 
 @app.post("/api/upload_component")
 def upload_component():
@@ -252,24 +278,6 @@ def send_message_http():
         print(f"Error in send_message: {e}")
         return jsonify({"ok": False, "error": str(e)}), 500
 
-
-@app.post("/api/upload_component")
-def upload_component_http():
-    try:
-        file = request.files.get("file")
-        name = request.form.get("name") or (file.filename if file else "")
-        if not file or not name:
-            return jsonify({"ok": False, "error": "missing file or name"}), 400
-
-        safe_name = "".join(c for c in name if c.isalnum() or c in ("_", "-", ".")).strip()
-        components_dir = os.path.join(BASE_DIR, "components")
-        os.makedirs(components_dir, exist_ok=True)
-        file_path = os.path.join(components_dir, safe_name)
-        file.save(file_path)
-
-        return jsonify({"ok": True, "name": safe_name})
-    except Exception as e:
-        return jsonify({"ok": False, "error": str(e)}), 500
 
 @app.post("/api/simulate_turns")
 def simulate_turns_http():

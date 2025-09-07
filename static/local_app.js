@@ -20,12 +20,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const componentNameInput = document.getElementById('component-name-input');
     const saveComponentBtn = document.getElementById('save-component');
 
-    // Component management elements
-    const componentSelect = document.getElementById('component-select');
-    const componentNameInput = document.getElementById('component-name-input');
-    const uploadComponentBtn = document.getElementById('upload-component-btn');
-    const saveComponentBtn = document.getElementById('save-component-btn');
-
     // RESTモード（Vercel）: Socket.IOは使わない
     let userName = userNameInput.value;
     let messageIndex = 0;
@@ -155,9 +149,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (name) loadComponent(name);
     };
 
+    // Save current agent configuration as a component
     saveComponentBtn.onclick = async () => {
         const name = componentNameInput.value.trim();
-        if (!name) return;
+        if (!name) {
+            alert('コンポーネント名を入力してください');
+            return;
+        }
         try {
             const res = await fetch('/api/upload_component', {
                 method: 'POST',
@@ -167,6 +165,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const result = await res.json();
             if (!result.ok) {
                 console.warn('save_component error', result.error);
+                alert(`保存に失敗しました: ${result.error || '不明なエラー'}`);
                 return;
             }
             const savedName = result.name || name;
@@ -174,8 +173,10 @@ document.addEventListener('DOMContentLoaded', () => {
             componentSelect.value = savedName;
             componentNameInput.value = '';
             await loadComponent(savedName);
+            alert(`コンポーネント「${savedName}」を保存しました`);
         } catch (e) {
             console.warn('save_component failed', e);
+            alert('保存に失敗しました');
         }
     };
 
@@ -238,53 +239,6 @@ document.addEventListener('DOMContentLoaded', () => {
     sendBtn.onclick = sendMessage;
     inputEl.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
     inputEl.addEventListener('input', () => { inputEl.style.height = 'auto'; inputEl.style.height = (inputEl.scrollHeight) + 'px'; });
-
-    // --- Component Upload / Save ---
-    if (uploadComponentBtn) {
-        uploadComponentBtn.onclick = async () => {
-            const fileInput = document.getElementById('component-file-input');
-            if (!fileInput || !fileInput.files[0]) return;
-            const file = fileInput.files[0];
-            const originalName = (componentNameInput?.value || file.name).trim();
-
-            const formData = new FormData();
-            formData.append('file', file);
-            formData.append('name', originalName);
-
-            try {
-                const res = await fetch('/api/upload_component', { method: 'POST', body: formData });
-                const data = await res.json();
-                const savedName = data.name || originalName;
-                if (componentSelect) componentSelect.value = savedName;
-                loadComponent(savedName);
-                if (componentNameInput) componentNameInput.value = '';
-            } catch (e) {
-                console.error('upload_component failed', e);
-            }
-        };
-    }
-
-    if (saveComponentBtn) {
-        saveComponentBtn.onclick = async () => {
-            const originalName = (componentNameInput?.value || '').trim();
-            if (!originalName) return;
-
-            try {
-                const res = await fetch('/api/save_component', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name: originalName })
-                });
-                const data = await res.json();
-                const savedName = data.name || originalName;
-                if (componentSelect) componentSelect.value = savedName;
-                loadComponent(savedName);
-                if (componentNameInput) componentNameInput.value = '';
-            } catch (e) {
-                console.error('save_component failed', e);
-            }
-        };
-    }
 
     // --- 初期ロード（履歴とエージェント設定送信） ---
     (async function init() {
