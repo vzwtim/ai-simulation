@@ -19,6 +19,8 @@ TEMPERATURE = float(os.getenv("TEMPERATURE", "0.7"))
 CONVERSATION_PACE_SECONDS = 7 # AIの応答間隔（秒）
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+COMPONENTS_DIR = os.path.join(BASE_DIR, "components")
+os.makedirs(COMPONENTS_DIR, exist_ok=True)
 app = Flask(
     __name__,
     template_folder=os.path.join(BASE_DIR, "templates"),
@@ -28,7 +30,19 @@ app.config['SECRET_KEY'] = 'secret!'
 
 # ===== 会話状態 =====
 conversation_history = []
-agents = []
+# コンポーネントのデフォルトを読み込む（perfume.jsonがあれば）
+def _load_default_agents():
+    path = os.path.join(COMPONENTS_DIR, "perfume.json")
+    if os.path.exists(path):
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            return data.get("agents", [])
+        except Exception:
+            pass
+    return []
+
+agents = _load_default_agents()
 last_processed_message_count = 0
 background_task_started = False
 auto_chat_enabled = False # 自動会話のデフォルトはOFF（手動でトリガー）
@@ -157,9 +171,48 @@ def conversation_loop():
 def index():
     return render_template("local_index.html")
 
+@app.get("/components")
+def components_portal():
+    return render_template("components_portal.html")
+
 @app.get("/api/history")
 def get_history():
     return jsonify(conversation_history)
+
+@app.get("/api/list_components")
+def list_components():
+    files = [f for f in os.listdir(COMPONENTS_DIR) if f.endswith(".json")]
+    names = [os.path.splitext(f)[0] for f in files]
+    return jsonify(names)
+
+@app.get("/api/get_component")
+def get_component():
+    name = request.args.get("name", "")
+    path = os.path.join(COMPONENTS_DIR, f"{name}.json")
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return jsonify(data)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 404
+
+@app.post("/api/upload_component")
+def upload_component():
+    try:
+        data = request.get_json(force=True) or {}
+        name = (data.get("name") or "").strip()
+        agents_data = data.get("agents")
+        if not name or not isinstance(agents_data, list):
+            return jsonify({"ok": False, "error": "invalid data"}), 400
+        safe_name = "".join(c for c in name if c.isalnum() or c in ("-", "_")).strip()
+        if not safe_name:
+            return jsonify({"ok": False, "error": "invalid name"}), 400
+        path = os.path.join(COMPONENTS_DIR, f"{safe_name}.json")
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump({"name": safe_name, "agents": agents_data}, f, ensure_ascii=False, indent=2)
+        return jsonify({"ok": True, "name": safe_name})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
 
 @app.post("/api/update_agents")
 def update_agents_http():

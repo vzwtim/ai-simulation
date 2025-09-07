@@ -54,6 +54,20 @@
         <hr class="divider">
         <section class="settings-section">
           <h3>Agents 設定</h3>
+          <div class="setting-item">
+            <label for="component-select">コンポーネント</label>
+            <select id="component-select"></select>
+          </div>
+          <div class="setting-item">
+            <label for="component-name-input">現在の設定を保存</label>
+            <div>
+              <input type="text" id="component-name-input" placeholder="コンポーネント名">
+              <button id="save-component">保存</button>
+            </div>
+          </div>
+          <div class="setting-item">
+            <a href="/components" target="_blank">コンポーネントポータルを開く</a>
+          </div>
           <div id="agent-list"></div>
           <button id="add-agent">＋ エージェントを追加</button>
         </section>
