@@ -17,8 +17,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const agentList = document.getElementById("agent-list");
     const addBtn = document.getElementById("add-agent");
     const componentSelect = document.getElementById('component-select');
-    const componentFileInput = document.getElementById('component-file');
-    const uploadComponentBtn = document.getElementById('upload-component');
     const componentNameInput = document.getElementById('component-name-input');
     const saveComponentBtn = document.getElementById('save-component');
 
@@ -151,42 +149,25 @@ document.addEventListener('DOMContentLoaded', () => {
         if (name) loadComponent(name);
     };
 
-    uploadComponentBtn.onclick = async () => {
-        const file = componentFileInput.files[0];
-        if (!file) return;
-        try {
-            const text = await file.text();
-            const data = JSON.parse(text);
-            await fetch('/api/upload_component', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            });
-            const names = await loadComponentList();
-            if (data.name) {
-                componentSelect.value = data.name;
-                await loadComponent(data.name);
-            } else if (names.length) {
-                componentSelect.value = names[0];
-            }
-            componentFileInput.value = '';
-        } catch (e) {
-            console.warn('upload_component failed', e);
-        }
-    };
-
     saveComponentBtn.onclick = async () => {
         const name = componentNameInput.value.trim();
         if (!name) return;
         try {
-            await fetch('/api/upload_component', {
+            const res = await fetch('/api/upload_component', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ name, agents })
             });
+            const result = await res.json();
+            if (!result.ok) {
+                console.warn('save_component error', result.error);
+                return;
+            }
+            const savedName = result.name || name;
             const names = await loadComponentList();
-            componentSelect.value = name;
-            await loadComponent(name);
+            componentSelect.value = savedName;
+            componentNameInput.value = '';
+            await loadComponent(savedName);
         } catch (e) {
             console.warn('save_component failed', e);
         }

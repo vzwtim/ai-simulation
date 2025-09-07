@@ -171,6 +171,10 @@ def conversation_loop():
 def index():
     return render_template("local_index.html")
 
+@app.get("/components")
+def components_portal():
+    return render_template("components_portal.html")
+
 @app.get("/api/history")
 def get_history():
     return jsonify(conversation_history)
@@ -206,7 +210,7 @@ def upload_component():
         path = os.path.join(COMPONENTS_DIR, f"{safe_name}.json")
         with open(path, "w", encoding="utf-8") as f:
             json.dump({"name": safe_name, "agents": agents_data}, f, ensure_ascii=False, indent=2)
-        return jsonify({"ok": True})
+        return jsonify({"ok": True, "name": safe_name})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
 
