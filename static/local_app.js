@@ -9,6 +9,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const autoChatToggle = document.getElementById('auto-chat-toggle');
     const bgColorInput = document.getElementById('bg-color-input');
     const bgImageInput = document.getElementById('bg-image-input');
+    const replyCountRange = document.getElementById('reply-count-range');
+    const replyCountValue = document.getElementById('reply-count-value');
+    const replyIntervalRange = document.getElementById('reply-interval-range');
+    const replyIntervalValue = document.getElementById('reply-interval-value');
 
     // Agent Settings elements
     const settingsModal = document.getElementById('settings-modal');
@@ -24,11 +28,15 @@ document.addEventListener('DOMContentLoaded', () => {
     let userName = userNameInput.value;
     let messageIndex = 0;
     let agents = [];
+    let turns = parseInt(replyCountRange.value, 10);
+    let replyIntervalSec = parseFloat(replyIntervalRange.value);
 
     // --- Settings Logic ---
     function loadSettings() {
         const savedBgColor = localStorage.getItem('chatBgColor');
         const savedBgImage = localStorage.getItem('chatBgImage');
+        const savedTurns = localStorage.getItem('replyCount');
+        const savedInterval = localStorage.getItem('replyInterval');
         if (savedBgColor) {
             bgColorInput.value = savedBgColor;
             messagesContainer.style.backgroundColor = savedBgColor;
@@ -37,12 +45,26 @@ document.addEventListener('DOMContentLoaded', () => {
             bgImageInput.value = savedBgImage;
             messagesContainer.style.backgroundImage = `url(${savedBgImage})`;
         }
+        if (savedTurns) {
+            turns = parseInt(savedTurns, 10);
+            replyCountRange.value = turns;
+            replyCountValue.textContent = turns;
+        } else {
+            replyCountValue.textContent = turns;
+        }
+        if (savedInterval) {
+            replyIntervalSec = parseFloat(savedInterval);
+            replyIntervalRange.value = replyIntervalSec;
+        }
+        replyIntervalValue.textContent = replyIntervalSec;
     }
 
     userNameInput.addEventListener('input', (e) => { userName = e.target.value; });
     autoChatToggle.addEventListener('change', (e) => { /* no-op on Vercel */ });
     bgColorInput.addEventListener('input', (e) => { messagesContainer.style.backgroundColor = e.target.value; localStorage.setItem('chatBgColor', e.target.value); });
     bgImageInput.addEventListener('input', (e) => { const url = e.target.value.trim(); messagesContainer.style.backgroundImage = url ? `url(${url})` : 'none'; localStorage.setItem('chatBgImage', url); });
+    replyCountRange.addEventListener('input', (e) => { turns = parseInt(e.target.value, 10); replyCountValue.textContent = turns; localStorage.setItem('replyCount', turns); });
+    replyIntervalRange.addEventListener('input', (e) => { replyIntervalSec = parseFloat(e.target.value); replyIntervalValue.textContent = replyIntervalSec; localStorage.setItem('replyInterval', replyIntervalSec); });
 
     // --- Modal Logic ---
     function openModal() { settingsModal.classList.add('visible'); }
@@ -220,13 +242,15 @@ document.addEventListener('DOMContentLoaded', () => {
             const res = await fetch('/api/send_message', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text, name: userName, turns: 5 })
+                body: JSON.stringify({ text, name: userName, turns })
             });
             const data = await res.json();
             if (data.ok) {
-                const delayMs = 600;
-                (data.generated || []).forEach((msg, idx) => {
-                    setTimeout(() => addMessage(msg), delayMs * (idx + 1));
+                let accumulated = 0;
+                (data.generated || []).forEach((msg) => {
+                    const delay = replyIntervalSec * 1000 + msg.content.length * 20;
+                    accumulated += delay;
+                    setTimeout(() => addMessage(msg), accumulated);
                 });
             } else {
                 console.error('send_message error', data.error);
