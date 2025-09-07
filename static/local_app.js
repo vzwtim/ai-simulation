@@ -184,6 +184,22 @@ document.addEventListener('DOMContentLoaded', () => {
     inputEl.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
     inputEl.addEventListener('input', () => { inputEl.style.height = 'auto'; inputEl.style.height = (inputEl.scrollHeight) + 'px'; });
 
+    async function loadComponent(name) {
+        try {
+            const res = await fetch(`/api/component/${encodeURIComponent(name)}`);
+            const data = await res.json();
+            if (!data.ok) return;
+            agents = data.agents || [];
+            renderAgents();
+            await updateAgentsOnServer();
+            messagesContainer.innerHTML = '';
+            messageIndex = 0;
+            (data.history || []).forEach(msg => addMessage(msg));
+        } catch (e) {
+            console.error('loadComponent failed', e);
+        }
+    }
+
     // --- Component Upload / Save ---
     if (uploadComponentBtn) {
         uploadComponentBtn.onclick = async () => {

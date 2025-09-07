@@ -218,6 +218,57 @@ def upload_component_http():
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
 
+
+@app.post("/api/save_component")
+def save_component_http():
+    """Save the current agents and history into a component file."""
+    try:
+        data = request.get_json(force=True) or {}
+        name = (data.get("name") or "").strip()
+        if not name:
+            return jsonify({"ok": False, "error": "missing name"}), 400
+
+        safe_name = "".join(c for c in name if c.isalnum() or c in ("_", "-", ".")).strip()
+        if not safe_name:
+            return jsonify({"ok": False, "error": "invalid name"}), 400
+
+        components_dir = os.path.join(BASE_DIR, "components")
+        os.makedirs(components_dir, exist_ok=True)
+        if not safe_name.endswith(".json"):
+            safe_name += ".json"
+        file_path = os.path.join(components_dir, safe_name)
+
+        content = {
+            "agents": agents,
+            "history": conversation_history,
+        }
+        with open(file_path, "w", encoding="utf-8") as f:
+            json.dump(content, f, ensure_ascii=False, indent=2)
+
+        return jsonify({"ok": True, "name": safe_name})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.get("/api/component/<name>")
+def get_component_http(name):
+    """Return a saved component by name."""
+    try:
+        safe_name = "".join(c for c in name if c.isalnum() or c in ("_", "-", ".")).strip()
+        if not safe_name.endswith(".json"):
+            safe_name += ".json"
+        components_dir = os.path.join(BASE_DIR, "components")
+        file_path = os.path.join(components_dir, safe_name)
+        if not os.path.isfile(file_path):
+            return jsonify({"ok": False, "error": "not found"}), 404
+        with open(file_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        data["name"] = safe_name
+        data["ok"] = True
+        return jsonify(data)
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
 @app.post("/api/simulate_turns")
 def simulate_turns_http():
     try:
