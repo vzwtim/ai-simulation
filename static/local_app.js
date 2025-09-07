@@ -17,6 +17,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const agentList = document.getElementById("agent-list");
     const addBtn = document.getElementById("add-agent");
 
+    // Component management elements
+    const componentSelect = document.getElementById('component-select');
+    const componentNameInput = document.getElementById('component-name-input');
+    const uploadComponentBtn = document.getElementById('upload-component-btn');
+    const saveComponentBtn = document.getElementById('save-component-btn');
+
     // RESTモード（Vercel）: Socket.IOは使わない
     let userName = userNameInput.value;
     let messageIndex = 0;
@@ -177,6 +183,53 @@ document.addEventListener('DOMContentLoaded', () => {
     sendBtn.onclick = sendMessage;
     inputEl.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
     inputEl.addEventListener('input', () => { inputEl.style.height = 'auto'; inputEl.style.height = (inputEl.scrollHeight) + 'px'; });
+
+    // --- Component Upload / Save ---
+    if (uploadComponentBtn) {
+        uploadComponentBtn.onclick = async () => {
+            const fileInput = document.getElementById('component-file-input');
+            if (!fileInput || !fileInput.files[0]) return;
+            const file = fileInput.files[0];
+            const originalName = (componentNameInput?.value || file.name).trim();
+
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('name', originalName);
+
+            try {
+                const res = await fetch('/api/upload_component', { method: 'POST', body: formData });
+                const data = await res.json();
+                const savedName = data.name || originalName;
+                if (componentSelect) componentSelect.value = savedName;
+                loadComponent(savedName);
+                if (componentNameInput) componentNameInput.value = '';
+            } catch (e) {
+                console.error('upload_component failed', e);
+            }
+        };
+    }
+
+    if (saveComponentBtn) {
+        saveComponentBtn.onclick = async () => {
+            const originalName = (componentNameInput?.value || '').trim();
+            if (!originalName) return;
+
+            try {
+                const res = await fetch('/api/save_component', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: originalName })
+                });
+                const data = await res.json();
+                const savedName = data.name || originalName;
+                if (componentSelect) componentSelect.value = savedName;
+                loadComponent(savedName);
+                if (componentNameInput) componentNameInput.value = '';
+            } catch (e) {
+                console.error('save_component failed', e);
+            }
+        };
+    }
 
     // --- 初期ロード（履歴とエージェント設定送信） ---
     (async function init() {
