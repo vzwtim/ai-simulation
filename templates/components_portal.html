@@ -4,10 +4,23 @@
   <meta charset="utf-8">
   <title>コンポーネントポータル</title>
   <link rel="stylesheet" href="/static/local_styles.css">
+  <link rel="stylesheet" href="/static/components_portal.css">
 </head>
 <body>
-  <h1>コンポーネントポータル</h1>
-  <ul id="component-list"></ul>
+  <div class="portal-container">
+    <h1>コンポーネントポータル</h1>
+    <table>
+      <thead>
+        <tr>
+          <th>名前</th>
+          <th>作者</th>
+          <th>アップ日時</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody id="component-list"></tbody>
+    </table>
+  </div>
   <script src="/static/components_portal.js"></script>
 </body>
 </html>
