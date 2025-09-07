@@ -56,7 +56,9 @@ def _load_default_agents():
             try:
                 with open(path, "r", encoding="utf-8") as f:
                     data = json.load(f)
-                return data.get("agents", [])
+                agents_list = data.get("agents") or []
+                if agents_list:
+                    return agents_list
             except Exception:
                 continue
     return []
