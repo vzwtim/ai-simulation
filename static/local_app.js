@@ -152,7 +152,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // Save current agent configuration as a component
     saveComponentBtn.onclick = async () => {
         const name = componentNameInput.value.trim();
-        if (!name) return;
+        if (!name) {
+            alert('コンポーネント名を入力してください');
+            return;
+        }
         try {
             const res = await fetch('/api/upload_component', {
                 method: 'POST',
@@ -162,6 +165,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const result = await res.json();
             if (!result.ok) {
                 console.warn('save_component error', result.error);
+                alert(`保存に失敗しました: ${result.error || '不明なエラー'}`);
                 return;
             }
             const savedName = result.name || name;
@@ -169,8 +173,10 @@ document.addEventListener('DOMContentLoaded', () => {
             componentSelect.value = savedName;
             componentNameInput.value = '';
             await loadComponent(savedName);
+            alert(`コンポーネント「${savedName}」を保存しました`);
         } catch (e) {
             console.warn('save_component failed', e);
+            alert('保存に失敗しました');
         }
     };
 
