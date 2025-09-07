@@ -199,6 +199,25 @@ def send_message_http():
         print(f"Error in send_message: {e}")
         return jsonify({"ok": False, "error": str(e)}), 500
 
+
+@app.post("/api/upload_component")
+def upload_component_http():
+    try:
+        file = request.files.get("file")
+        name = request.form.get("name") or (file.filename if file else "")
+        if not file or not name:
+            return jsonify({"ok": False, "error": "missing file or name"}), 400
+
+        safe_name = "".join(c for c in name if c.isalnum() or c in ("_", "-", ".")).strip()
+        components_dir = os.path.join(BASE_DIR, "components")
+        os.makedirs(components_dir, exist_ok=True)
+        file_path = os.path.join(components_dir, safe_name)
+        file.save(file_path)
+
+        return jsonify({"ok": True, "name": safe_name})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
 @app.post("/api/simulate_turns")
 def simulate_turns_http():
     try:
