@@ -4,7 +4,7 @@ import urllib.request
 import random
 from datetime import datetime
 from zoneinfo import ZoneInfo
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, Response
 import threading
 
 # ===== 設定 =====
@@ -45,6 +45,16 @@ app = Flask(
     static_folder=os.path.join(BASE_DIR, "static"),
 )
 app.config['SECRET_KEY'] = 'secret!'
+
+FAVICON_SVG = "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' fill='#555'/></svg>"
+
+
+@app.route('/favicon.ico')
+@app.route('/favicon.png')
+@app.route('/favicon.svg')
+def favicon():
+    """Serve a tiny SVG favicon to avoid unnecessary 404s."""
+    return Response(FAVICON_SVG, mimetype='image/svg+xml')
 
 # ===== 会話状態 =====
 conversation_history = []
